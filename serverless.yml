@@ -1,0 +1,93 @@
+plugins:
+  - serverless-offline
+service: users
+frameworkVersion: ">=1.1.0<2.0.0"
+provider:
+  name: aws
+  runtime: nodejs14.x
+  stage: dev
+  region: us-east-1
+  environment:
+    USERS_TABLE: ${self:service}-${opt:stage, self:provider.stage}
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:Query
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+      Resource: "*"
+functions:
+  addUser:
+    handler: api/users.addUser
+    memorySize: 128
+    description: Create a new user.
+    events:
+    - http:
+        path: users
+        method: post
+  getUsers:
+    handler: api/users.getUsers
+    memorySize: 128
+    description: Fetch all users.
+    events:
+    - http: 
+        path: users
+        method: get  
+  getUser:
+    handler: api/users.getUser
+    memorySize: 128
+    description: Fetch a individual user
+    events:
+    - http:
+        path: users/{id}
+        method: get
+  deleteUser:
+    handler: api/users.deleteUser
+    memorySize: 128
+    description: Delete a user
+    events:
+    - http:
+        path: users
+        method: delete
+  editUser:
+    handler: api/users.editUser
+    memorySize: 128
+    description: Edit a user
+    events:
+    - http:
+        path: users
+        method: patch
+resources:
+  Resources:
+    UsersDynamoDbTable:
+      Type: "AWS::DynamoDB::Table"
+      DeletionPolicy: Retain
+      Properties:
+        AttributeDefinitions:
+          -
+            AttributeName: "id"
+            AttributeType: "S"
+          -
+            AttributeName: "username"
+            AttributeType: "S"
+          -
+            AttributeName: "password"
+            AttributeType: "S"
+        KeySchema:
+          -
+            AttributeName: "id"
+            KeyType: "HASH"
+        GlobalSecondaryIndexes:
+          -
+            IndexName: "usernameIndex"
+            KeySchema:
+              -
+                AttributeName: "username"
+                KeyType: "HASH"
+            Projection:
+              ProjectionType: "ALL"
+        BillingMode: "PAY_PER_REQUEST"
+        StreamSpecification:
+          StreamViewType: "NEW_AND_OLD_IMAGES"
+        TableName: ${self:provider.environment.USERS_TABLE}
