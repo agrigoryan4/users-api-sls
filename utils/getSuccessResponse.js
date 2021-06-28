@@ -1,10 +1,10 @@
 module.exports = function getSuccessResponse(result, statusCode) {
-	const { Items, LastEvaluatedKey } = result;
+	const { Items, LastEvaluatedKey, Token } = result;
 	const response = {
 		statusCode: statusCode || 200,
 	};
 	const responseBody = {
-		data: Items || null,
+		data: Items || {},
 	};
 	if(LastEvaluatedKey) {
 		responseBody._meta = {
@@ -12,6 +12,9 @@ module.exports = function getSuccessResponse(result, statusCode) {
 				LastEvaluatedKey: LastEvaluatedKey,
 			},
 		};
+	}
+	if(Token) {
+		responseBody.data.Token = Token;
 	}
 	response.body = JSON.stringify(responseBody);
 	return response;

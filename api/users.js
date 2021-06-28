@@ -1,14 +1,15 @@
 'use strict';
 
-const AWS = require('aws-sdk');
 const uuid = require('uuid');
 const bcrypt = require('bcrypt');
-// utils
+// validation
 const userValidation = require('../utils/validation/userValidation');
+// exceptions
 const transformJoiException = require('../utils/exceptions/transformJoiException');
 const {
   BadRequestException,
-  ConflictException
+  ConflictException,
+  ForbiddenException
 } = require('../utils/exceptions/userFacingExceptions');
 // helpers
 const extractExistingProperties = require('../utils/helpers/extractExistingProperties');
@@ -16,14 +17,12 @@ const parseNumber = require('../utils/helpers/parseNumber');
 const getErrorResponse = require('../utils/getErrorResponse');
 const getSuccessResponse = require('../utils/getSuccessResponse');
 // constants
-const USERS_TABLE = process.env.USERS_TABLE;
+const { USERS_TABLE } = require('../utils/constants/db');
 const { DEFAULT_LIMIT, DEFAULT_OFFSET } = require('../utils/constants/pagination');
+// db
+const dynamoDb = require('../db');
 
-/**/AWS.config.setPromisesDependency(require('bluebird'));
-
-/**/const dynamoDb = new AWS.DynamoDB.DocumentClient();
-
-module.exports.addUser = async (event, context, callback) => {
+module.exports.addUser = async (event, context) => {
   try {
     const { username, password, repeatPassword } = JSON.parse(event.body);
     if (!username || !password) {
@@ -70,7 +69,7 @@ module.exports.addUser = async (event, context, callback) => {
   }
 };
 
-module.exports.getUsers = async (event, context, callback) => {
+module.exports.getUsers = async (event, context) => {
   try {
     const { queryStringParameters } = event;
     // pagination params
@@ -102,7 +101,7 @@ module.exports.getUsers = async (event, context, callback) => {
   }
 };
 
-module.exports.getUser = async (event, context, callback) => {
+module.exports.getUser = async (event, context) => {
   try {
     const { id } = event.pathParameters;
     if (!id) {
@@ -131,10 +130,14 @@ module.exports.getUser = async (event, context, callback) => {
   }
 };
 
-module.exports.deleteUser = async (event, context, callback) => {
+module.exports.deleteUser = async (event, context) => {
   try {
     const requestBody = JSON.parse(event.body);
+    const { requestContext: { authorizer: { user: authorizedUser } } } = event;
     const { id } = requestBody;
+    if(id !== authorizedUser.id) {
+      throw new ForbiddenException('Not qualified for the action');
+    }
     const params = {
       TableName: USERS_TABLE,
       Key: {'id': id},
@@ -148,14 +151,17 @@ module.exports.deleteUser = async (event, context, callback) => {
   }
 };
 
-module.exports.editUser = async (event, context, callback) => {
+module.exports.editUser = async (event, context) => {
   try {
+    const { requestContext: { authorizer: { user: authorizedUser } } } = event;
     const requestBody = JSON.parse(event.body);
     const { id, username } = requestBody;
     if (!id) {
       throw new BadRequestException();
     }
-    // throw new ForbiddenException();
+    if(id !== authorizedUser.id) {
+      throw new ForbiddenException('Not qualified for the action');
+    }
     const { error } = userValidation.validate({
       id,
       username,

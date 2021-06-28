@@ -8,6 +8,7 @@
     "bcrypt": "^5.0.1",
     "bluebird": "^3.7.2",
     "joi": "^17.4.0",
+    "jsonwebtoken": "^8.5.1",
     "serverless-offline": "^7.0.0",
     "uuid": "^8.3.2"
   },

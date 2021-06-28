@@ -18,6 +18,16 @@ provider:
         - dynamodb:PutItem
       Resource: "*"
 functions:
+  auth:
+    handler: api/auth.authorizer
+  login:
+    handler: api/auth.getToken
+    memorySize: 128
+    description: Get an authentication token.
+    events:
+    - http:
+        path: auth
+        method: post
   addUser:
     handler: api/users.addUser
     memorySize: 128
@@ -50,6 +60,10 @@ functions:
     - http:
         path: users
         method: delete
+        authorizer:
+          name: auth
+          type: request
+          identitySource: method.request.header.X-Amz-Security-Token
   editUser:
     handler: api/users.editUser
     memorySize: 128
@@ -58,6 +72,10 @@ functions:
     - http:
         path: users
         method: patch
+        authorizer:
+          name: auth
+          type: request
+          identitySource: method.request.header.X-Amz-Security-Token
 resources:
   Resources:
     UsersDynamoDbTable:
